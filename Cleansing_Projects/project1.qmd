@@ -1,28 +1,142 @@
 ---
-title: "Client Report - [Insert Project Title]"
-subtitle: "Course DS 250"
-author: "[STUDENT NAME]"
-format:
-  html:
-    self-contained: true
-    page-layout: full
-    title-block-banner: true
-    toc: true
-    toc-depth: 3
-    toc-location: body
-    number-sections: false
-    html-math-method: katex
-    code-fold: true
-    code-summary: "Show the code"
-    code-overflow: wrap
-    code-copy: hover
-    code-tools:
-        source: false
-        toggle: true
-        caption: See code
-execute: 
-  warning: false
-    
+title: "Zillow - Long Term Rentals"
+format: html
 ---
 
-### Paste in a template
+```{r}
+#| warning: FALSE
+#| message: FALSE
+
+library(tidyverse)
+library(stringr)
+library(priceR)
+library(USAboundaries)
+library(USAboundariesData)
+library(ggrepel)
+library(leaflet)
+library(sf)
+
+#df <- read.csv("https://files.zillowstatic.com/research/public_csvs/zori/Metro_zori_uc_sfrcondomfr_sm_month.csv?t=1784668130")
+df2 <- read.csv("https://files.zillowstatic.com/research/public_csvs/zori/City_zori_uc_sfrcondomfr_sm_month.csv?t=1784668130")
+
+```
+
+# Introduction
+
+I found my self looking at housing data quite a lot this semester, whether it was for classes, or out of personal curiosity. Recently I came across a public Data set that is offered by the company Zillow which covers a wide range of housing data across the United States. My interest was peaked at the "long term" rental data fount on their [website](https://www.zillow.com/research/data/).This project covers what is included within that data set. In future use, there is potential to join this data with Airbnb data to compare the differences between long term and short term rentals.
+
+## Wrangling
+
+```{r}
+#| warning: FALSE
+#| message: FALSE
+
+# df2 <- df2 %>% filter(RegionID == "32931" | RegionID == "5365" | RegionID == "40326" | RegionID == "52998" | RegionID == "20288")
+df2 <- df2 %>% filter(RegionName %in% c(
+    "Montgomery", "Juneau", "Phoenix", "Little Rock", "Sacramento",
+    "Denver", "Hartford", "Dover", "Tallahassee", "Atlanta",
+    "Honolulu", "Boise", "Springfield", "Indianapolis", "Des Moines",
+    "Topeka", "Frankfort", "Baton Rouge", "Augusta", "Annapolis",
+    "Boston", "Lansing", "Saint Paul", "Jackson", "Jefferson City",
+    "Helena", "Lincoln", "Carson City", "Concord", "Trenton",
+    "Santa Fe", "Albany", "Raleigh", "Bismarck", "Columbus",
+    "Oklahoma City", "Salem", "Harrisburg", "Providence", "Columbia",
+    "Pierre", "Nashville", "Austin", "Salt Lake City", "Montpelier",
+    "Richmond", "Olympia", "Charleston", "Madison", "Cheyenne"
+  )
+)
+
+df2long <- df2 %>% pivot_longer(cols = matches(".*\\d{4}.\\d{2}.\\d{2}$"), names_to = "Date",values_to = "Rent") %>% mutate(Date = str_replace(Date,"^X","")) %>% mutate(Date = as.Date(str_replace_all(Date,"\\.","-")))
+
+df1 <- df2long %>% filter(RegionName %in% c("Phoenix","Boise","Salt Lake City"))
+
+df2inflation <- df1 %>% mutate(earnings_2024=adjust_for_inflation(price = df1$Rent, from_date = lubridate:: year(df1$Date), country = "US", to_date = 2024))
+
+df2grouped <- df2long %>% na.omit() %>% group_by(RegionName) %>% summarise(Rent=round(mean(Rent),2))
+
+```
+
+# Visualizing
+
+### Typical rent overtime
+
+```{r}
+#| warning: FALSE
+#| message: FALSE
+
+ggplot(data=df2inflation,aes(x=Date,y=Rent,col=RegionName))+
+  geom_line()+
+  labs(x="Year",y="Typical Rent ($)",title="Typical Rent on the Rise",subtitle="2015 - 2026",col="City")+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()+
+  theme(panel.grid.major.y = element_line(linetype="dashed",color="grey"),legend.box="vertical",legend.position = c(0.2, 1),
+  legend.justification = c(0.9, 1.1),legend.background=element_blank())
+
+```
+
+At first glance the typical rent appears to be raising overtime, however, in the following graph, after adjusting for inflation, there is an obvious change in the slope of the lines.
+
+``` {r}
+#| warning: FALSE
+#| message: FALSE
+
+palette = c("darkblue","lightskyblue","purple")
+
+ggplot(data=df2inflation,aes(x=Date,y=earnings_2024,col=RegionName))+
+  geom_line()+
+  geom_vline(xintercept=as.Date("2022-01-01"),col="grey50",linetype = "dashed")+
+  annotate("text",x=as.Date("2023-11-01"),y=1380,label="2022: Rent begins to drop")+
+  labs(x="Year",y="Typical Rent ($)",title="Yearly Change in Rent",subtitle="Adjusted for inflation (2024)",col="City")+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()+
+  theme(panel.grid.major.y = element_line(linetype="dashed",color="grey"),legend.box="vertical",legend.position = c(0.2, 1),
+  legend.justification = c(0.9, 0.95),legend.background=element_blank())
+```
+
+We can see that the general trend of the lines remains the same, however,it seems that long term rent begins to decrease around the year 2022 which was hidden in the previous graph. Another interesting addition that didn't quite show up in the first graph is the appearance of "humps" in the lines. They occur roughly around the same time every year. The reason for the "humps" is unknown, and I'd love to take a further look into why that might be the case, however this project does not cover that.
+
+### USA Map: Marking Typical Rent for Capital Cities
+
+```{r}
+#| warning: false
+#| message: false
+
+states <- us_states()
+cities <- us_cities()
+
+consecstates <- states %>% filter(state_abbr != "AK" & state_abbr != "DC" & state_abbr != "HI" & state_abbr != "PR")
+
+top3 <- cities %>%  filter(state_abbr != "AK" & state_abbr != "DC" & state_abbr != "HI" & state_abbr != "PR") %>% group_by(state_name) %>% slice_max(population,n=3) %>% mutate(ranking = row_number(desc(population)))
+
+top1 <- top3 %>% filter(ranking==1) %>% mutate(lon=st_coordinates(geometry)[,1],lat=st_coordinates(geometry)[,2])
+
+labels <- sprintf(consecstates$name) %>% lapply(htmltools::HTML)
+
+pal<-colorNumeric(palette = c("darkblue","lightskyblue"), domain = top3$ranking)
+
+leaflet(consecstates) %>% 
+  addTiles() %>% 
+  addPolygons(color = "#444444", weight = 0.5, smoothFactor = 0.5,
+    opacity = 1.0, fillOpacity = 0,
+    fill = "floralwhite",
+    highlightOptions = highlightOptions(color = "white", weight = 2,
+      bringToFront = FALSE),label = labels,
+  labelOptions = labelOptions(
+    style = list("font-weight" = "normal", padding = "3px 8px"),
+    textsize = "15px",
+     direction = "auto")) %>%
+  setView(lng = -97, lat = 40, zoom = 4) %>% 
+  addCircles(data=top1,
+             radius = 50000,
+             label = ~paste0(city," - ","Typical Rent: ",df2grouped$Rent),
+             fillOpacity = .1,
+             color = ~pal(ranking),
+              fillColor =  ~pal(ranking),group="circles")
+
+```
+
+<span style="color:#6A737D">Averaged rent from 2015 to 2026</span>
+
+# Conclusion
+
+For anyone looking to enter into a contract for long term housing, this data could be beneficial to help them find cheaper rent. Not only that, but for college students graduating or getting married, it is also very helpful in determining what a reasonable rent to pay is for a starter apartment. 
