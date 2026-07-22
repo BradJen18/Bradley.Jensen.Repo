@@ -172,9 +172,9 @@
   {
     "objectID": "Cleansing_Projects/project1.html",
     "href": "Cleansing_Projects/project1.html",
-    "title": "Client Report - [Insert Project Title]",
+    "title": "Zillow - Long Term Rentals",
     "section": "",
-    "text": "Paste in a template\n\n\n\n\n Back to top",
+    "text": "library(tidyverse)\nlibrary(stringr)\nlibrary(priceR)\nlibrary(USAboundaries)\nlibrary(USAboundariesData)\nlibrary(ggrepel)\nlibrary(leaflet)\nlibrary(sf)\n\n#df &lt;- read.csv(\"https://files.zillowstatic.com/research/public_csvs/zori/Metro_zori_uc_sfrcondomfr_sm_month.csv?t=1784668130\")\ndf2 &lt;- read.csv(\"https://files.zillowstatic.com/research/public_csvs/zori/City_zori_uc_sfrcondomfr_sm_month.csv?t=1784668130\")",
     "crumbs": [
       "Data Cleansing",
       "Project 1"
@@ -362,6 +362,17 @@
     "crumbs": [
       "Story Telling",
       "Project 3"
+    ]
+  },
+  {
+    "objectID": "Cleansing_Projects/project1.html#wrangling",
+    "href": "Cleansing_Projects/project1.html#wrangling",
+    "title": "Zillow - Long Term Rentals",
+    "section": "Wrangling",
+    "text": "Wrangling\n\n# df2 &lt;- df2 %&gt;% filter(RegionID == \"32931\" | RegionID == \"5365\" | RegionID == \"40326\" | RegionID == \"52998\" | RegionID == \"20288\")\ndf2 &lt;- df2 %&gt;% filter(RegionName %in% c(\n    \"Montgomery\", \"Juneau\", \"Phoenix\", \"Little Rock\", \"Sacramento\",\n    \"Denver\", \"Hartford\", \"Dover\", \"Tallahassee\", \"Atlanta\",\n    \"Honolulu\", \"Boise\", \"Springfield\", \"Indianapolis\", \"Des Moines\",\n    \"Topeka\", \"Frankfort\", \"Baton Rouge\", \"Augusta\", \"Annapolis\",\n    \"Boston\", \"Lansing\", \"Saint Paul\", \"Jackson\", \"Jefferson City\",\n    \"Helena\", \"Lincoln\", \"Carson City\", \"Concord\", \"Trenton\",\n    \"Santa Fe\", \"Albany\", \"Raleigh\", \"Bismarck\", \"Columbus\",\n    \"Oklahoma City\", \"Salem\", \"Harrisburg\", \"Providence\", \"Columbia\",\n    \"Pierre\", \"Nashville\", \"Austin\", \"Salt Lake City\", \"Montpelier\",\n    \"Richmond\", \"Olympia\", \"Charleston\", \"Madison\", \"Cheyenne\"\n  )\n)\n\ndf2long &lt;- df2 %&gt;% pivot_longer(cols = matches(\".*\\\\d{4}.\\\\d{2}.\\\\d{2}$\"), names_to = \"Date\",values_to = \"Rent\") %&gt;% mutate(Date = str_replace(Date,\"^X\",\"\")) %&gt;% mutate(Date = as.Date(str_replace_all(Date,\"\\\\.\",\"-\")))\n\ndf1 &lt;- df2long %&gt;% filter(RegionName %in% c(\"Phoenix\",\"Boise\",\"Salt Lake City\"))\n\ndf2grouped &lt;- df2long %&gt;% na.omit() %&gt;% group_by(RegionName) %&gt;% summarise(Rent=round(mean(Rent),2))\n\ndf2inflation &lt;- df1 %&gt;% mutate(earnings_2024=adjust_for_inflation(price = df1$Rent, from_date = lubridate:: year(df1$Date), country = \"US\", to_date = 2024))\n\nGenerating URL to request all 295 results\nRetrieving inflation data for US \nGenerating URL to request all 66 results",
+    "crumbs": [
+      "Data Cleansing",
+      "Project 1"
     ]
   }
 ]
