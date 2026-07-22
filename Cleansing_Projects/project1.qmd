@@ -44,7 +44,7 @@ df2 <- read.csv("https://files.zillowstatic.com/research/public_csvs/zori/City_z
 
 # Introduction
 
-I found my self looking at housing data quite a lot this semester, whether it was for classes, or out of personal curiosity. Recently I came across a public Data set that is offered by the company Zillow which covers a wide range of housing data across the United States. My interest was peaked at the "long term" rental data fount on their [website](https://www.zillow.com/research/data/).This project covers what is included within that data set. In future use, there is potential to join this data with Airbnb data to compare the differences between long term and short term rentals.
+I found my self looking at housing data quite a lot this semester, whether it was for classes, or out of personal curiosity. Recently I came across a public Data set that is offered by the company Zillow which covers a wide range of housing data across the United States. My interest was peaked at the "long term" rental data fount on their [website](https://www.zillow.com/research/data/). This project covers what is included within that data set. In future use, there is potential to join this data with Airbnb data to compare the differences between long term and short term rentals.
 
 ## Wrangling
 
@@ -100,8 +100,6 @@ At first glance the typical rent appears to be raising overtime, however, in the
 ``` {r}
 #| warning: FALSE
 #| message: FALSE
-
-palette = c("darkblue","lightskyblue","purple")
 
 ggplot(data=df2inflation,aes(x=Date,y=earnings_2024,col=RegionName))+
   geom_line()+
